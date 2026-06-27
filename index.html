@@ -338,6 +338,7 @@ body{min-height:100vh;background:linear-gradient(160deg,#0a0e2e 0%,#0d1a4a 50%,#
 </div>
 <div class="view active" id="view-leaderboard">
   <div style="text-align:center;margin-top:12px"><span class="badge">SCORES SO FAR</span></div>
+  <div id="lb-countdown-banner" style="display:none;max-width:520px;margin:10px auto 0;padding:0 14px;"></div>
   <div class="container">
     <div style="font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:10px;letter-spacing:1px;">TAP A PLAYER TO SEE THEIR PROFILE</div>
     <div class="lb-header"><span>RANK</span><span>PLAYER</span><span style="text-align:right">POINTS</span></div>
@@ -476,6 +477,7 @@ body{min-height:100vh;background:linear-gradient(160deg,#0a0e2e 0%,#0d1a4a 50%,#
       <button class="tab-btn" id="tab-reset" onclick="setTab('reset')">Reset</button>
       <button class="tab-btn" id="tab-trophy" onclick="setTab('trophy')">Trophy</button>
       <button class="tab-btn" id="tab-strikes" onclick="setTab('strikes')">&#x26A0; Strikes</button>
+      <button class="tab-btn" id="tab-fixtures" onclick="setTab('fixtures')">&#x270F; Fixtures</button>
     </div>
     <div id="panel-pts">
       <div class="section-label">MATCH NAME</div>
@@ -527,7 +529,21 @@ body{min-height:100vh;background:linear-gradient(160deg,#0a0e2e 0%,#0d1a4a 50%,#
       <div style="font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:14px;">3 strikes = banned from earning points for 5 games. Add a strike with a note of what they did.</div>
       <div id="strikes-player-list"></div>
     </div>
-    <div id="panel-reset" style="display:none">
+    <div id="panel-fixtures" style="display:none">
+      <div class="section-label">✏️ EDIT FIXTURE TEAM NAMES</div>
+      <div style="font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:14px;">Update team names when fixtures are confirmed — especially for knockout round TBC slots. Changes apply immediately across the whole app.</div>
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;" id="fx-edit-filter-btns">
+        <button class="btn-small" onclick="setFxFilter('all')" id="fxf-all" style="background:linear-gradient(90deg,#FFD700,#FFA500);color:#0a0e2e;">All</button>
+        <button class="btn-small" onclick="setFxFilter('R32')" id="fxf-R32" style="background:rgba(255,255,255,0.1);">R32</button>
+        <button class="btn-small" onclick="setFxFilter('R16')" id="fxf-R16" style="background:rgba(255,255,255,0.1);">R16</button>
+        <button class="btn-small" onclick="setFxFilter('QF')" id="fxf-QF" style="background:rgba(255,255,255,0.1);">QF</button>
+        <button class="btn-small" onclick="setFxFilter('SF')" id="fxf-SF" style="background:rgba(255,255,255,0.1);">SF</button>
+        <button class="btn-small" onclick="setFxFilter('FINAL')" id="fxf-FINAL" style="background:rgba(255,255,255,0.1);">Final</button>
+        <button class="btn-small" onclick="setFxFilter('3RD')" id="fxf-3RD" style="background:rgba(255,255,255,0.1);">3rd</button>
+      </div>
+      <div id="admin-fixtures-list"></div>
+    </div>
+
       <div class="reset-section">
         <div class="warn-icon">&#x26A0;</div>
         <p>Reset <strong style="color:#fff">ALL scores</strong> to 0?</p>
@@ -833,6 +849,7 @@ async function load(){
     if(lmData&&lmData.value)lastMinutePreds=lmData.value;
   }catch(e){lastMinutePreds={};}
   players.forEach(p=>{if(!passwords[p.name])passwords[p.name]=p.name.toLowerCase()+'123';});
+  await loadFixtureOverrides();
   renderLeaderboard();
   renderSnapshotPreview();
 }
@@ -918,6 +935,8 @@ function getStreak(name){
 }
 
 function renderLeaderboard(){
+  renderLbCountdown();
+  checkCelebration();
   const rows=document.getElementById('leaderboard-rows');rows.innerHTML='';
   sorted().forEach((p,i)=>{
     const rank=i+1,rc=rank<=3?'rank-'+rank:'',icon=['','&#x1F3C6;','&#x1F948;','&#x1F949;'][rank]||'';
@@ -1337,11 +1356,11 @@ function doAdminLogin(){
 }
 function setTab(tab){
   currentAdminTab=tab;
-  ['pts','preds','history','players','pws','reset','trophy','strikes'].forEach(t=>{
+  ['pts','preds','history','players','pws','reset','trophy','strikes','fixtures'].forEach(t=>{
     const btn=document.getElementById('tab-'+t),panel=document.getElementById('panel-'+t);
     if(btn)btn.classList.toggle('active',t===tab);if(panel)panel.style.display=t===tab?'block':'none';
   });
-  if(tab==='preds')renderAdminPreds();if(tab==='history')renderAdminHistory();if(tab==='players')renderRemoveList();if(tab==='pws')renderPwList();if(tab==='trophy')renderAdminTrophyPanel();if(tab==='strikes')renderAdminStrikes();
+  if(tab==='preds')renderAdminPreds();if(tab==='history')renderAdminHistory();if(tab==='players')renderRemoveList();if(tab==='pws')renderPwList();if(tab==='trophy')renderAdminTrophyPanel();if(tab==='strikes')renderAdminStrikes();if(tab==='fixtures'){currentFxFilter='all';renderAdminFixtures();}
 }
 function renderAdmin(){
   const list=document.getElementById('admin-player-list');list.innerHTML='';
@@ -1625,6 +1644,100 @@ function pickNum(fid,side,num){
   for(var i=0;i<=10;i++){var btn=document.getElementById('np-'+side+'-'+fid+'-'+i);if(btn)btn.classList.remove('picked');}
   var picked=document.getElementById('np-'+side+'-'+fid+'-'+num);if(picked)picked.classList.add('picked');
 }
+// ===== ADMIN FIXTURE EDITOR =====
+var fixtureOverrides={};
+var currentFxFilter='all';
+const SK_FX_OVERRIDES='wc26_fixture_overrides';
+
+async function loadFixtureOverrides(){
+  try{
+    const {data}=await supa.from('settings').select('value').eq('key',SK_FX_OVERRIDES).single();
+    if(data&&data.value)fixtureOverrides=data.value;
+  }catch(e){fixtureOverrides={};}
+  applyFixtureOverrides();
+}
+
+function applyFixtureOverrides(){
+  Object.entries(fixtureOverrides).forEach(([id,ov])=>{
+    const f=FIXTURES.find(x=>x.id===id);
+    if(f){if(ov.home)f.home=ov.home;if(ov.away)f.away=ov.away;}
+  });
+}
+
+async function saveFixtureOverrides(){
+  try{
+    await supa.from('settings').upsert({key:SK_FX_OVERRIDES,value:fixtureOverrides},{onConflict:'key'});
+  }catch(e){console.error('saveFixtureOverrides error',e);}
+}
+
+function setFxFilter(grp){
+  currentFxFilter=grp;
+  ['all','R32','R16','QF','SF','FINAL','3RD'].forEach(function(g){
+    var btn=document.getElementById('fxf-'+g);
+    if(btn){btn.style.background=g===grp?'linear-gradient(90deg,#FFD700,#FFA500)':'rgba(255,255,255,0.1)';btn.style.color=g===grp?'#0a0e2e':'#aaa';}
+  });
+  renderAdminFixtures();
+}
+
+function renderAdminFixtures(){
+  var box=document.getElementById('admin-fixtures-list');
+  if(!box)return;
+  box.innerHTML='';
+  var groups=['R32','R16','QF','SF','3RD','FINAL'];
+  var filtered=FIXTURES.filter(function(f){
+    if(currentFxFilter==='all')return groups.indexOf(f.group)>=0;
+    return f.group===currentFxFilter;
+  });
+  if(!filtered.length){
+    box.innerHTML='<div style="font-family:Arial,sans-serif;color:rgba(255,255,255,0.4);text-align:center;padding:30px 0">No fixtures in this stage</div>';
+    return;
+  }
+  // Group by stage
+  var byGroup={};
+  filtered.forEach(function(f){if(!byGroup[f.group])byGroup[f.group]=[];byGroup[f.group].push(f);});
+  var stageOrder=['R32','R16','QF','SF','3RD','FINAL'];
+  var stageLabels={'R32':'ROUND OF 32','R16':'ROUND OF 16','QF':'QUARTER FINALS','SF':'SEMI FINALS','3RD':'3RD PLACE PLAY-OFF','FINAL':'THE FINAL'};
+  stageOrder.forEach(function(grp){
+    if(!byGroup[grp])return;
+    var hdr=document.createElement('div');
+    hdr.style.cssText='font-size:10px;letter-spacing:3px;color:#FFD700;font-family:Arial,sans-serif;padding:10px 0 6px;border-bottom:1px solid rgba(255,215,0,0.2);margin-bottom:10px;';
+    hdr.textContent=stageLabels[grp]||grp;
+    box.appendChild(hdr);
+    byGroup[grp].forEach(function(f){
+      var card=document.createElement('div');
+      card.style.cssText='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:12px;margin-bottom:10px;';
+      var dateStr=new Date(f.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      card.innerHTML=
+        '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:8px;">'+dateStr+' BST — '+f.venue+' ('+f.id+')</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
+          '<input class="input-field" id="fxe-home-'+f.id+'" placeholder="Home team" value="'+f.home+'" style="flex:1;min-width:100px;margin-bottom:0;font-size:13px;"/>'+
+          '<span style="color:rgba(255,255,255,0.4);font-family:Arial,sans-serif;font-size:11px;">vs</span>'+
+          '<input class="input-field" id="fxe-away-'+f.id+'" placeholder="Away team" value="'+f.away+'" style="flex:1;min-width:100px;margin-bottom:0;font-size:13px;"/>'+
+          '<button class="btn-small" onclick="saveFixtureEdit(\''+f.id+'\')" style="white-space:nowrap;">SAVE</button>'+
+        '</div>';
+      box.appendChild(card);
+    });
+  });
+}
+
+async function saveFixtureEdit(fid){
+  var homeEl=document.getElementById('fxe-home-'+fid);
+  var awayEl=document.getElementById('fxe-away-'+fid);
+  if(!homeEl||!awayEl)return;
+  var home=homeEl.value.trim();
+  var away=awayEl.value.trim();
+  if(!home||!away){showToast('Both team names required!','warn');return;}
+  var f=FIXTURES.find(function(x){return x.id===fid;});
+  if(!f)return;
+  f.home=home;f.away=away;
+  if(!fixtureOverrides[fid])fixtureOverrides[fid]={};
+  fixtureOverrides[fid].home=home;
+  fixtureOverrides[fid].away=away;
+  await saveFixtureOverrides();
+  showToast('Fixture updated: '+home+' vs '+away,'success');
+  renderAdminFixtures();
+}
+
 function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== TROPHY PREDICTION =====
@@ -2366,6 +2479,168 @@ function doRewardsLogin(){
 
 function rewardsLogout(){rewardsLoggedIn=null;renderVoteSection();}
 
+// ===== CELEBRATION & COUNTDOWN =====
+const FINAL_END_DATE = new Date('2026-07-19T20:00:00+01:00'); // Final kicks off
+const CELEBRATION_END = new Date('2026-07-22T23:59:59+01:00'); // Show until 22nd
+var confettiAnimId = null;
+var countdownInterval = null;
+
+function isCelebrationTime(){
+  var now = new Date();
+  return now >= FINAL_END_DATE && now <= CELEBRATION_END;
+}
+
+function isBeforeFinal(){
+  return new Date() < FINAL_END_DATE;
+}
+
+function renderLbCountdown(){
+  var banner = document.getElementById('lb-countdown-banner');
+  if(!banner) return;
+  if(isCelebrationTime()){
+    banner.style.display='none';
+    return;
+  }
+  if(!isBeforeFinal()){
+    banner.style.display='none';
+    return;
+  }
+  banner.style.display='block';
+  function updateCd(){
+    var diff = FINAL_END_DATE - new Date();
+    if(diff <= 0){ banner.style.display='none'; clearInterval(countdownInterval); checkCelebration(); return; }
+    var d=Math.floor(diff/86400000), h=Math.floor((diff%86400000)/3600000), m=Math.floor((diff%3600000)/60000), s=Math.floor((diff%60000)/1000);
+    var parts=[];
+    if(d>0)parts.push(d+'d');
+    if(h>0||d>0)parts.push(h+'h');
+    parts.push(m+'m');
+    parts.push(s+'s');
+    banner.innerHTML='<div style="background:linear-gradient(90deg,rgba(255,215,0,0.12),rgba(255,165,0,0.08));border:1px solid rgba(255,215,0,0.3);border-radius:12px;padding:12px 16px;text-align:center;">'+'<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:6px;">⏳ TOURNAMENT ENDS IN</div>'+'<div style="font-family:Impact,sans-serif;font-size:28px;color:#FFD700;letter-spacing:3px;text-shadow:0 0 20px rgba(255,215,0,0.4);">'+parts.join(' ')+'</div>'+'<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;letter-spacing:1px;">Until the World Cup Final</div>'+'</div>';
+  }
+  updateCd();
+  if(countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(updateCd, 1000);
+}
+
+function checkCelebration(){
+  if(isCelebrationTime()){
+    showCelebration();
+  }
+}
+
+function showCelebration(){
+  var overlay = document.getElementById('celebration-overlay');
+  if(!overlay) return;
+  overlay.style.display = 'block';
+  buildPodium();
+  startConfetti();
+}
+
+function buildPodium(){
+  var s = sorted();
+  var podiumEl = document.getElementById('cel-podium');
+  var restEl = document.getElementById('cel-rest');
+  if(!podiumEl || !restEl) return;
+
+  // Top 3 podium
+  var podiumData = [
+    {rank:2, data:s[1]||null, color:'#C0C0C0', icon:'🥈', size:'80px', pts_size:'22px', bg:'rgba(192,192,192,0.12)', border:'rgba(192,192,192,0.3)', order:1},
+    {rank:1, data:s[0]||null, color:'#FFD700', icon:'🥇', size:'100px', pts_size:'28px', bg:'rgba(255,215,0,0.15)', border:'rgba(255,215,0,0.5)', order:0},
+    {rank:3, data:s[2]||null, color:'#CD7F32', icon:'🥉', size:'70px', pts_size:'19px', bg:'rgba(205,127,50,0.12)', border:'rgba(205,127,50,0.3)', order:2}
+  ];
+
+  var podiumHTML = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:24px;">';
+  podiumData.forEach(function(p){
+    if(!p.data) return;
+    podiumHTML += '<div style="flex:1;max-width:150px;text-align:center;background:'+p.bg+';border:1px solid '+p.border+';border-radius:16px;padding:16px 8px 14px;order:'+p.order+';">'
+      + '<div style="font-size:32px;margin-bottom:6px;">'+p.icon+'</div>'
+      + '<div style="font-family:Impact,sans-serif;font-size:'+p.size+';color:'+p.color+';letter-spacing:1px;line-height:1;text-shadow:0 0 20px '+p.color+'80;">'+p.data.name+'</div>'
+      + '<div style="font-family:Impact,sans-serif;font-size:'+p.pts_size+';color:'+p.color+';margin-top:6px;">'+p.data.points+'</div>'
+      + '<div style="font-family:Arial,sans-serif;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;">PTS</div>'
+      + '</div>';
+  });
+  podiumHTML += '</div>';
+  podiumEl.innerHTML = podiumHTML;
+
+  // 4th and below
+  var restHTML = '';
+  if(s.length > 3){
+    restHTML += '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:3px;margin-bottom:12px;">THE REST</div>';
+    for(var i=3; i<s.length; i++){
+      restHTML += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-bottom:6px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<span style="font-family:Impact,sans-serif;font-size:15px;color:rgba(255,255,255,0.4);">'+(i+1)+'</span>'
+        + '<span style="font-family:Impact,sans-serif;font-size:16px;color:#e0e0e0;">'+s[i].name+'</span>'
+        + '</div>'
+        + '<span style="font-family:Impact,sans-serif;font-size:17px;color:rgba(255,255,255,0.7);">'+s[i].points+' <span style="font-size:10px;font-family:Arial,sans-serif;color:rgba(255,255,255,0.3);">pts</span></span>'
+        + '</div>';
+    }
+  }
+  restEl.innerHTML = restHTML;
+}
+
+function startConfetti(){
+  var canvas = document.getElementById('confetti-canvas');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  var pieces = [];
+  var colors = ['#FFD700','#FFA500','#fff','#4fc3f7','#81c784','#ce93d8','#ff8a65','#f06292'];
+  for(var i=0; i<160; i++){
+    pieces.push({
+      x: Math.random()*canvas.width,
+      y: Math.random()*canvas.height - canvas.height,
+      w: Math.random()*10+5,
+      h: Math.random()*6+3,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      rot: Math.random()*360,
+      rotSpeed: (Math.random()-0.5)*4,
+      vx: (Math.random()-0.5)*2,
+      vy: Math.random()*3+2,
+      alpha: 1
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    var allDone = true;
+    pieces.forEach(function(p){
+      if(p.y < canvas.height + 20) allDone = false;
+      p.x += p.vx; p.y += p.vy; p.rot += p.rotSpeed;
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI/180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+      if(p.y > canvas.height){ p.y = -20; p.x = Math.random()*canvas.width; }
+    });
+    confettiAnimId = requestAnimationFrame(draw);
+  }
+  draw();
+
+  // Stop confetti after 8 seconds but keep overlay
+  setTimeout(function(){
+    if(confettiAnimId) cancelAnimationFrame(confettiAnimId);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  }, 8000);
+}
+
 document.getElementById('main-nav').style.display='flex';load();loadTrophy();
 </script>
+<!-- CELEBRATION OVERLAY -->
+<div id="celebration-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:linear-gradient(160deg,#0a0e2e 0%,#0d1a4a 50%,#0a0e2e 100%);overflow-y:auto;">
+  <canvas id="confetti-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10000;"></canvas>
+  <div style="max-width:520px;margin:0 auto;padding:30px 16px 60px;text-align:center;position:relative;z-index:10001;">
+    <div style="font-size:12px;letter-spacing:4px;color:#FFD700;font-family:Arial,sans-serif;font-weight:bold;margin-bottom:6px;">🏆 FINAL STANDINGS 🏆</div>
+    <div style="font-size:clamp(22px,6vw,40px);font-family:Impact,sans-serif;letter-spacing:2px;color:#fff;text-shadow:0 0 30px rgba(255,215,0,0.5),3px 3px 0 #000;margin-bottom:4px;">WORLD CUP 2026</div>
+    <div style="font-size:13px;color:#FFD700;font-family:Arial,sans-serif;letter-spacing:2px;margin-bottom:30px;">PREDICTION GAME — FINAL RESULTS</div>
+    <div id="cel-podium" style="margin-bottom:30px;"></div>
+    <div id="cel-rest" style="margin-bottom:30px;"></div>
+    <div style="font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.3);margin-top:20px;letter-spacing:1px;">Thanks for playing! 🎉</div>
+  </div>
+</div>
 </body></html>
