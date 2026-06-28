@@ -1056,6 +1056,9 @@ function getPlayerBadge(stats, name){
   // Struggling - max 1pt per game in last 5
   if(last5.length>=5&&last5Total<=5)return'Struggling 😤';
 
+  // Consistent - every game in last 5 scored between 1-6 pts
+  if(last5.length>=5&&last5.every(function(g){return g>=1&&g<=6;}))return'Consistent 🎯';
+
   // Wooden spoon - last place
   if(rank===totalPlayers)return'Wooden Spoon 🥄';
 
@@ -1457,7 +1460,7 @@ function renderPublicHistory(){
   [...matchHistory].reverse().forEach((h,i)=>{
     const gameNum=matchHistory.length-i;const card=document.createElement('div');card.className='hist-card';
     const d=new Date(h.date);const dateStr=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div><div style="font-family:Impact,sans-serif;font-size:15px;color:#FFD700;letter-spacing:1px;">'+h.match+'</div><div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.3);">Game '+gameNum+' - '+dateStr+'</div></div></div>';
+    card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div><div style="font-family:Impact,sans-serif;font-size:15px;color:#FFD700;letter-spacing:1px;">'+h.match+'</div><div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.3);">'+dateStr+'</div></div></div>';
     const rankIcons=['&#x1F3C6;','&#x1F948;','&#x1F949;'];
     h.scores.forEach((s,idx)=>{
       const ptColor=idx===0?'#FFD700':idx===1?'#C0C0C0':idx===2?'#CD7F32':'rgba(255,255,255,0.7)';
