@@ -2072,9 +2072,9 @@ function renderBarChart(){
 
 // ===== REWARDS & BADGES =====
 const SK_VOTES = 'wc26_votes';
-const REVEAL_DATE = new Date('2026-07-20T00:00:00+01:00');
-const VOTING_START = new Date('2026-07-19T20:00:00+01:00');
-const VOTING_END = new Date('2026-07-20T23:59:59+01:00');
+const REVEAL_DATE = new Date('2026-07-21T23:00:00+01:00');
+const VOTING_START = new Date('2026-07-20T00:00:00+01:00');
+const VOTING_END = new Date('2026-07-21T23:00:00+01:00');
 
 const VOTED_BADGES = [
   {
@@ -2354,10 +2354,48 @@ function renderVoteSection(){
 
   // Voting window message
   if(votingOpen && !revealed){
-    html += '<div class="voting-window-msg">&#x1F5F3; VOTING IS OPEN! Cast your votes below - closes 20th July</div>';
+    var vdiff = VOTING_END - new Date();
+    var vd=Math.floor(vdiff/86400000),vh=Math.floor((vdiff%86400000)/3600000),vm=Math.floor((vdiff%3600000)/60000),vs=Math.floor((vdiff%60000)/1000);
+    var vtimeStr=(vd>0?vd+'d ':'')+vh+'h '+vm+'m '+vs+'s';
+    html += '<div style="background:linear-gradient(90deg,rgba(46,213,115,0.12),rgba(46,213,115,0.05));border:1px solid rgba(46,213,115,0.3);border-radius:12px;padding:14px 16px;margin-bottom:14px;text-align:center;">'
+      + '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:6px;">🗳️ VOTING CLOSES IN</div>'
+      + '<div style="font-family:Impact,sans-serif;font-size:26px;color:#2ed573;letter-spacing:3px;text-shadow:0 0 20px rgba(46,213,115,0.4);" id="vote-countdown-timer">'+vtimeStr+'</div>'
+      + '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;">Cast your votes for Dark Horse & Unexpected Challenger below!</div>'
+      + '</div>';
+    // Start the timer
+    setTimeout(function(){
+      var vInt=setInterval(function(){
+        var vd2=VOTING_END-new Date();
+        if(vd2<=0){clearInterval(vInt);renderVoteSection();return;}
+        var el=document.getElementById('vote-countdown-timer');
+        if(!el){clearInterval(vInt);return;}
+        var d2=Math.floor(vd2/86400000),h2=Math.floor((vd2%86400000)/3600000),m2=Math.floor((vd2%3600000)/60000),s2=Math.floor((vd2%60000)/1000);
+        el.textContent=(d2>0?d2+'d ':'')+h2+'h '+m2+'m '+s2+'s';
+      },1000);
+    },100);
   } else if(!votingOpen && !revealed){
-    var vstart = VOTING_START;
-    html += '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px;font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.45);text-align:center;margin-bottom:14px;">Voting opens 19th July at 8pm (after the final!) and closes 20th July</div>';
+    var vdiff2 = VOTING_START - new Date();
+    if(vdiff2 > 0){
+      var vd3=Math.floor(vdiff2/86400000),vh3=Math.floor((vdiff2%86400000)/3600000),vm3=Math.floor((vdiff2%3600000)/60000),vs3=Math.floor((vdiff2%60000)/1000);
+      var vtimeStr2=(vd3>0?vd3+'d ':'')+vh3+'h '+vm3+'m '+vs3+'s';
+      html += '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;margin-bottom:14px;text-align:center;">'
+        + '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:6px;">⏳ VOTING OPENS IN</div>'
+        + '<div style="font-family:Impact,sans-serif;font-size:26px;color:#FFD700;letter-spacing:3px;text-shadow:0 0 20px rgba(255,215,0,0.4);" id="vote-open-timer">'+vtimeStr2+'</div>'
+        + '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;">Voting opens 20th July — vote for Dark Horse & Unexpected Challenger!</div>'
+        + '</div>';
+      setTimeout(function(){
+        var vInt2=setInterval(function(){
+          var vd4=VOTING_START-new Date();
+          if(vd4<=0){clearInterval(vInt2);renderVoteSection();return;}
+          var el2=document.getElementById('vote-open-timer');
+          if(!el2){clearInterval(vInt2);return;}
+          var d4=Math.floor(vd4/86400000),h4=Math.floor((vd4%86400000)/3600000),m4=Math.floor((vd4%3600000)/60000),s4=Math.floor((vd4%60000)/1000);
+          el2.textContent=(d4>0?d4+'d ':'')+h4+'h '+m4+'m '+s4+'s';
+        },1000);
+      },100);
+    } else {
+      html += '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px;font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.45);text-align:center;margin-bottom:14px;">Voting opens 20th July and closes 21st July at 11pm!</div>';
+    }
   }
 
   if(revealed){
