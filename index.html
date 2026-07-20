@@ -2487,6 +2487,7 @@ const FINAL_END_DATE = new Date('2026-07-19T20:00:00+01:00'); // Final kicks off
 const CELEBRATION_END = new Date('2026-07-22T23:59:59+01:00'); // Show until 22nd
 var confettiAnimId = null;
 var countdownInterval = null;
+var celebrationShown = false;
 
 function isCelebrationTime(){
   var now = new Date();
@@ -2526,7 +2527,9 @@ function renderLbCountdown(){
 }
 
 function checkCelebration(){
+  if(celebrationShown) return;
   if(isCelebrationTime()){
+    celebrationShown = true;
     showCelebration();
   }
 }
