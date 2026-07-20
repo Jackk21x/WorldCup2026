@@ -2537,6 +2537,17 @@ function showCelebration(){
   overlay.style.display = 'block';
   buildPodium();
   startConfetti();
+  // Auto dismiss after 6 seconds and go to leaderboard
+  setTimeout(function(){
+    overlay.style.transition = 'opacity 1s';
+    overlay.style.opacity = '0';
+    setTimeout(function(){
+      overlay.style.display = 'none';
+      overlay.style.opacity = '1';
+      overlay.style.transition = '';
+      switchMain('leaderboard');
+    }, 1000);
+  }, 6000);
 }
 
 function buildPodium(){
@@ -2547,17 +2558,17 @@ function buildPodium(){
 
   // Top 3 podium
   var podiumData = [
-    {rank:2, data:s[1]||null, color:'#C0C0C0', icon:'🥈', size:'80px', pts_size:'22px', bg:'rgba(192,192,192,0.12)', border:'rgba(192,192,192,0.3)', order:1},
-    {rank:1, data:s[0]||null, color:'#FFD700', icon:'🥇', size:'100px', pts_size:'28px', bg:'rgba(255,215,0,0.15)', border:'rgba(255,215,0,0.5)', order:0},
-    {rank:3, data:s[2]||null, color:'#CD7F32', icon:'🥉', size:'70px', pts_size:'19px', bg:'rgba(205,127,50,0.12)', border:'rgba(205,127,50,0.3)', order:2}
+    {rank:2, data:s[1]||null, color:'#C0C0C0', icon:'🥈', size:'4vw', pts_size:'3.5vw', bg:'rgba(192,192,192,0.12)', border:'rgba(192,192,192,0.3)', order:1},
+    {rank:1, data:s[0]||null, color:'#FFD700', icon:'🥇', size:'5vw', pts_size:'4vw', bg:'rgba(255,215,0,0.15)', border:'rgba(255,215,0,0.5)', order:0},
+    {rank:3, data:s[2]||null, color:'#CD7F32', icon:'🥉', size:'3.5vw', pts_size:'3vw', bg:'rgba(205,127,50,0.12)', border:'rgba(205,127,50,0.3)', order:2}
   ];
 
-  var podiumHTML = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:24px;">';
+  var podiumHTML = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:6px;margin-bottom:24px;">';
   podiumData.forEach(function(p){
     if(!p.data) return;
-    podiumHTML += '<div style="flex:1;max-width:150px;text-align:center;background:'+p.bg+';border:1px solid '+p.border+';border-radius:16px;padding:16px 8px 14px;order:'+p.order+';">'
-      + '<div style="font-size:32px;margin-bottom:6px;">'+p.icon+'</div>'
-      + '<div style="font-family:Impact,sans-serif;font-size:'+p.size+';color:'+p.color+';letter-spacing:1px;line-height:1;text-shadow:0 0 20px '+p.color+'80;">'+p.data.name+'</div>'
+    podiumHTML += '<div style="flex:1;min-width:0;text-align:center;background:'+p.bg+';border:1px solid '+p.border+';border-radius:16px;padding:12px 6px 12px;order:'+p.order+';">'
+      + '<div style="font-size:28px;margin-bottom:6px;">'+p.icon+'</div>'
+      + '<div style="font-family:Impact,sans-serif;font-size:'+p.size+';color:'+p.color+';letter-spacing:1px;line-height:1.1;text-shadow:0 0 20px '+p.color+'80;word-break:break-all;overflow-wrap:break-word;">'+p.data.name+'</div>'
       + '<div style="font-family:Impact,sans-serif;font-size:'+p.pts_size+';color:'+p.color+';margin-top:6px;">'+p.data.points+'</div>'
       + '<div style="font-family:Arial,sans-serif;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;">PTS</div>'
       + '</div>';
