@@ -262,7 +262,7 @@ body{min-height:100vh;background:linear-gradient(160deg,#0a0e2e 0%,#0d1a4a 50%,#
 .pc-mini-stat{flex:1;background:rgba(255,255,255,0.05);border-radius:8px;padding:6px 4px;text-align:center;}
 .pc-mini-stat .val{font-size:14px;font-weight:900;color:#fff;}
 .pc-mini-stat .lbl{font-size:8px;font-family:Arial,sans-serif;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-top:2px;}
-.profile-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 14px;}
+.profile-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10002;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 14px;}
 .profile-modal-bg.show{display:flex;}
 .profile-detail{background:linear-gradient(160deg,#0d1a4a,#0a0e2e);border:1px solid rgba(255,215,0,0.3);border-radius:20px;width:100%;max-width:480px;padding:24px;position:relative;margin:auto;}
 .pd-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;}
@@ -1056,9 +1056,6 @@ function getPlayerBadge(stats, name){
   // Struggling - max 1pt per game in last 5
   if(last5.length>=5&&last5Total<=5)return'Struggling 😤';
 
-  // Consistent - every game in last 5 scored between 1-6 pts
-  if(last5.length>=5&&last5.every(function(g){return g>=1&&g<=6;}))return'Consistent 🎯';
-
   // Wooden spoon - last place
   if(rank===totalPlayers)return'Wooden Spoon 🥄';
 
@@ -1095,8 +1092,9 @@ function renderProfiles(){
 function getPlayerRewards(name){
   if(!isRevealed()) return [];
   var won=[];
-  var autoW=getAutoWinners();
-  var voteW=getVoteWinners();
+  var autoW={};var voteW={};
+  try{autoW=getAutoWinners()||{};}catch(e){console.error('getAutoWinners error',e);}
+  try{voteW=getVoteWinners()||{};}catch(e){console.error('getVoteWinners error',e);}
   var d=autoW['_detail']||{};
   var allBadges=[...AUTO_BADGES,...VOTED_BADGES];
   allBadges.forEach(function(b){
@@ -1173,6 +1171,7 @@ function toggleRewardDetail(id){
   if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 function openProfileModal(name){
+ try{
   const p=players.find(pl=>pl.name===name);if(!p)return;
   const stats=getPlayerStats(name);
   const badge=getPlayerBadge(stats,name);
@@ -1222,8 +1221,12 @@ function openProfileModal(name){
     content.innerHTML='<button class="pd-close" onclick="closeProfileModal()">X</button><div class="pd-header"><div class="pd-rank-icon">'+rankIcon+'</div><div class="pd-name">'+name+'</div><div style="font-family:Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">RANK #'+rank+'</div><div class="pd-badge">'+badge+'</div></div>'+lateJoinerMsg+lastMinMsg+strikeMsg+statsGrid+(stats&&stats.gamePts.length>0?'<div class="pd-section-title">POINTS PER GAME</div><div class="pd-trend">'+trendHTML+'</div><div class="pd-section-title">FINISHING POSITION EACH GAME</div><div class="pd-rank-history">'+rankChipsHTML+'</div><div class="pd-section-title">POINTS BREAKDOWN</div><div class="pd-pts-timeline">'+ptsTimelineHTML+'</div>':'')+'<div style="margin-top:18px;font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.25);text-align:center;">Based on '+matchHistory.length+' games</div>'+
     '<div id="pd-rewards-tab-btn" style="margin-top:18px;"><button onclick="toggleRewardsCabinet()" style="width:100%;padding:12px;background:linear-gradient(90deg,rgba(255,215,0,0.15),rgba(255,165,0,0.15));border:1px solid rgba(255,215,0,0.3);border-radius:12px;color:#FFD700;font-family:Impact,sans-serif;font-size:14px;letter-spacing:2px;cursor:pointer;">⚜️ REWARDS CABINET ⚜️</button></div>'+
     '<div id="pd-rewards-cabinet" style="display:none;margin-top:12px;"></div>';
-  renderRewardsCabinet(name);
+  try{renderRewardsCabinet(name);}catch(e){console.error('rewards cabinet error',e);}
   document.getElementById('profile-modal').classList.add('show');
+ }catch(err){
+  console.error('openProfileModal error',err);
+  showToast('Error opening profile - check console','warn');
+ }
 }
 function closeProfileModal(){document.getElementById('profile-modal').classList.remove('show');}
 document.getElementById('profile-modal').addEventListener('click',function(e){if(e.target===this)closeProfileModal();});
@@ -1460,7 +1463,7 @@ function renderPublicHistory(){
   [...matchHistory].reverse().forEach((h,i)=>{
     const gameNum=matchHistory.length-i;const card=document.createElement('div');card.className='hist-card';
     const d=new Date(h.date);const dateStr=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div><div style="font-family:Impact,sans-serif;font-size:15px;color:#FFD700;letter-spacing:1px;">'+h.match+'</div><div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.3);">'+dateStr+'</div></div></div>';
+    card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div><div style="font-family:Impact,sans-serif;font-size:15px;color:#FFD700;letter-spacing:1px;">'+h.match+'</div><div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.3);">Game '+gameNum+' - '+dateStr+'</div></div></div>';
     const rankIcons=['&#x1F3C6;','&#x1F948;','&#x1F949;'];
     h.scores.forEach((s,idx)=>{
       const ptColor=idx===0?'#FFD700':idx===1?'#C0C0C0':idx===2?'#CD7F32':'rgba(255,255,255,0.7)';
@@ -1848,9 +1851,17 @@ async function saveTrophyPick(){
   renderTrophy();
 }
 async function setTrophyWinner(team){
+  var previousWinner=trophyWinner;
   trophyWinner=team;await saveTrophyWinner();
-  players.forEach(function(p){if(trophyPicks[p.name]===team){p.points+=10;}});
-  savePlayers();renderLeaderboard();
+  // Only award points if this is a new winner or different winner
+  if(previousWinner!==team){
+    // Remove points from previous winner's pickers if changing
+    if(previousWinner){
+      players.forEach(function(p){if(trophyPicks[p.name]===previousWinner){p.points-=10;}});
+    }
+    players.forEach(function(p){if(trophyPicks[p.name]===team){p.points+=10;}});
+    savePlayers();renderLeaderboard();
+  }
   showToast('Winner set! 10 pts awarded to correct picks!','success');
 }
 function adminSetTrophyWinner(){
@@ -2072,9 +2083,9 @@ function renderBarChart(){
 
 // ===== REWARDS & BADGES =====
 const SK_VOTES = 'wc26_votes';
-const REVEAL_DATE = new Date('2026-07-21T23:00:00+01:00');
-const VOTING_START = new Date('2026-07-20T00:00:00+01:00');
-const VOTING_END = new Date('2026-07-21T23:00:00+01:00');
+const REVEAL_DATE = new Date('2026-07-20T00:00:00+01:00');
+const VOTING_START = new Date('2026-07-19T20:00:00+01:00');
+const VOTING_END = new Date('2026-07-20T23:59:59+01:00');
 
 const VOTED_BADGES = [
   {
@@ -2281,7 +2292,7 @@ function getVoteWinners(){
 }
 
 function renderRewards(){
-  loadVotes().then(function(){
+  Promise.all([loadVotes(),loadTrophy()]).then(function(){
     renderRewardsTimer();
     renderAutoRewards();
     renderVoteSection();
@@ -2354,48 +2365,10 @@ function renderVoteSection(){
 
   // Voting window message
   if(votingOpen && !revealed){
-    var vdiff = VOTING_END - new Date();
-    var vd=Math.floor(vdiff/86400000),vh=Math.floor((vdiff%86400000)/3600000),vm=Math.floor((vdiff%3600000)/60000),vs=Math.floor((vdiff%60000)/1000);
-    var vtimeStr=(vd>0?vd+'d ':'')+vh+'h '+vm+'m '+vs+'s';
-    html += '<div style="background:linear-gradient(90deg,rgba(46,213,115,0.12),rgba(46,213,115,0.05));border:1px solid rgba(46,213,115,0.3);border-radius:12px;padding:14px 16px;margin-bottom:14px;text-align:center;">'
-      + '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:6px;">🗳️ VOTING CLOSES IN</div>'
-      + '<div style="font-family:Impact,sans-serif;font-size:26px;color:#2ed573;letter-spacing:3px;text-shadow:0 0 20px rgba(46,213,115,0.4);" id="vote-countdown-timer">'+vtimeStr+'</div>'
-      + '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;">Cast your votes for Dark Horse & Unexpected Challenger below!</div>'
-      + '</div>';
-    // Start the timer
-    setTimeout(function(){
-      var vInt=setInterval(function(){
-        var vd2=VOTING_END-new Date();
-        if(vd2<=0){clearInterval(vInt);renderVoteSection();return;}
-        var el=document.getElementById('vote-countdown-timer');
-        if(!el){clearInterval(vInt);return;}
-        var d2=Math.floor(vd2/86400000),h2=Math.floor((vd2%86400000)/3600000),m2=Math.floor((vd2%3600000)/60000),s2=Math.floor((vd2%60000)/1000);
-        el.textContent=(d2>0?d2+'d ':'')+h2+'h '+m2+'m '+s2+'s';
-      },1000);
-    },100);
+    html += '<div class="voting-window-msg">&#x1F5F3; VOTING IS OPEN! Cast your votes below - closes 20th July</div>';
   } else if(!votingOpen && !revealed){
-    var vdiff2 = VOTING_START - new Date();
-    if(vdiff2 > 0){
-      var vd3=Math.floor(vdiff2/86400000),vh3=Math.floor((vdiff2%86400000)/3600000),vm3=Math.floor((vdiff2%3600000)/60000),vs3=Math.floor((vdiff2%60000)/1000);
-      var vtimeStr2=(vd3>0?vd3+'d ':'')+vh3+'h '+vm3+'m '+vs3+'s';
-      html += '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;margin-bottom:14px;text-align:center;">'
-        + '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:6px;">⏳ VOTING OPENS IN</div>'
-        + '<div style="font-family:Impact,sans-serif;font-size:26px;color:#FFD700;letter-spacing:3px;text-shadow:0 0 20px rgba(255,215,0,0.4);" id="vote-open-timer">'+vtimeStr2+'</div>'
-        + '<div style="font-family:Arial,sans-serif;font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;">Voting opens 20th July — vote for Dark Horse & Unexpected Challenger!</div>'
-        + '</div>';
-      setTimeout(function(){
-        var vInt2=setInterval(function(){
-          var vd4=VOTING_START-new Date();
-          if(vd4<=0){clearInterval(vInt2);renderVoteSection();return;}
-          var el2=document.getElementById('vote-open-timer');
-          if(!el2){clearInterval(vInt2);return;}
-          var d4=Math.floor(vd4/86400000),h4=Math.floor((vd4%86400000)/3600000),m4=Math.floor((vd4%3600000)/60000),s4=Math.floor((vd4%60000)/1000);
-          el2.textContent=(d4>0?d4+'d ':'')+h4+'h '+m4+'m '+s4+'s';
-        },1000);
-      },100);
-    } else {
-      html += '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px;font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.45);text-align:center;margin-bottom:14px;">Voting opens 20th July and closes 21st July at 11pm!</div>';
-    }
+    var vstart = VOTING_START;
+    html += '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px;font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.45);text-align:center;margin-bottom:14px;">Voting opens 19th July at 8pm (after the final!) and closes 20th July</div>';
   }
 
   if(revealed){
@@ -2578,7 +2551,6 @@ function showCelebration(){
   overlay.style.display = 'block';
   buildPodium();
   startConfetti();
-  // Auto dismiss after 6 seconds and go to leaderboard
   setTimeout(function(){
     overlay.style.transition = 'opacity 1s';
     overlay.style.opacity = '0';
@@ -2599,17 +2571,17 @@ function buildPodium(){
 
   // Top 3 podium
   var podiumData = [
-    {rank:2, data:s[1]||null, color:'#C0C0C0', icon:'🥈', size:'4vw', pts_size:'3.5vw', bg:'rgba(192,192,192,0.12)', border:'rgba(192,192,192,0.3)', order:1},
-    {rank:1, data:s[0]||null, color:'#FFD700', icon:'🥇', size:'5vw', pts_size:'4vw', bg:'rgba(255,215,0,0.15)', border:'rgba(255,215,0,0.5)', order:0},
-    {rank:3, data:s[2]||null, color:'#CD7F32', icon:'🥉', size:'3.5vw', pts_size:'3vw', bg:'rgba(205,127,50,0.12)', border:'rgba(205,127,50,0.3)', order:2}
+    {rank:2, data:s[1]||null, color:'#C0C0C0', icon:'🥈', size:'80px', pts_size:'22px', bg:'rgba(192,192,192,0.12)', border:'rgba(192,192,192,0.3)', order:1},
+    {rank:1, data:s[0]||null, color:'#FFD700', icon:'🥇', size:'100px', pts_size:'28px', bg:'rgba(255,215,0,0.15)', border:'rgba(255,215,0,0.5)', order:0},
+    {rank:3, data:s[2]||null, color:'#CD7F32', icon:'🥉', size:'70px', pts_size:'19px', bg:'rgba(205,127,50,0.12)', border:'rgba(205,127,50,0.3)', order:2}
   ];
 
-  var podiumHTML = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:6px;margin-bottom:24px;">';
+  var podiumHTML = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:24px;">';
   podiumData.forEach(function(p){
     if(!p.data) return;
-    podiumHTML += '<div style="flex:1;min-width:0;text-align:center;background:'+p.bg+';border:1px solid '+p.border+';border-radius:16px;padding:12px 6px 12px;order:'+p.order+';">'
-      + '<div style="font-size:28px;margin-bottom:6px;">'+p.icon+'</div>'
-      + '<div style="font-family:Impact,sans-serif;font-size:'+p.size+';color:'+p.color+';letter-spacing:1px;line-height:1.1;text-shadow:0 0 20px '+p.color+'80;word-break:break-all;overflow-wrap:break-word;">'+p.data.name+'</div>'
+    podiumHTML += '<div style="flex:1;max-width:150px;text-align:center;background:'+p.bg+';border:1px solid '+p.border+';border-radius:16px;padding:16px 8px 14px;order:'+p.order+';">'
+      + '<div style="font-size:32px;margin-bottom:6px;">'+p.icon+'</div>'
+      + '<div style="font-family:Impact,sans-serif;font-size:'+p.size+';color:'+p.color+';letter-spacing:1px;line-height:1;text-shadow:0 0 20px '+p.color+'80;">'+p.data.name+'</div>'
       + '<div style="font-family:Impact,sans-serif;font-size:'+p.pts_size+';color:'+p.color+';margin-top:6px;">'+p.data.points+'</div>'
       + '<div style="font-family:Arial,sans-serif;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;">PTS</div>'
       + '</div>';
