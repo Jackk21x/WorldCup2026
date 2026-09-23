@@ -1098,7 +1098,8 @@ function getPlayerRewards(name){
   var d=autoW['_detail']||{};
   var allBadges=[...AUTO_BADGES,...VOTED_BADGES];
   allBadges.forEach(function(b){
-    var winnerStr=autoW[b.id]||voteW[b.id]||'';
+    var winnerStr=autoW[b.id]||(voteW[b.id]&&voteW[b.id].winner)||'';
+    if(typeof winnerStr!=='string')winnerStr='';
     var winners=winnerStr.split(' & ').map(function(s){return s.trim();});
     if(winners.indexOf(name)!==-1){
       var detail={id:b.id,icon:b.icon,title:b.title};
@@ -1127,6 +1128,8 @@ function toggleRewardsCabinet(){
 function renderRewardsCabinet(name){
   var cab=document.getElementById('pd-rewards-cabinet');
   if(!cab)return;
+  cab.style.maxHeight='420px';
+  cab.style.overflowY='auto';
   if(!isRevealed()){
     cab.innerHTML='<div style="font-family:Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:16px;">Rewards revealed after the World Cup final ⏳</div>';
     return;
@@ -1145,26 +1148,68 @@ function renderRewardsCabinet(name){
   });
   var html='';
   Object.values(grouped).forEach(function(r){
-    html+='<div class="reward-cabinet-item" onclick="toggleRewardDetail(\'rc-detail-'+r.id+'\')" >'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:10px;margin-bottom:8px;cursor:pointer;">'+
+    html+='<div class="reward-cabinet-item">'+
+      '<div onclick="toggleRewardDetail(\'rc-detail-'+r.id+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:10px;margin-bottom:8px;cursor:pointer;">'+
         '<div style="display:flex;align-items:center;gap:10px;">'+
           '<span style="font-size:22px;">'+r.icon+'</span>'+
           '<span style="font-family:Impact,sans-serif;font-size:14px;color:#FFD700;letter-spacing:1px;">'+r.title+'</span>'+
         '</div>'+
         '<span style="font-family:Impact,sans-serif;font-size:18px;color:#FFD700;background:rgba(255,215,0,0.15);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">'+r.count+'</span>'+
       '</div>'+
-      '<div id="rc-detail-'+r.id+'" style="display:none;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:10px;margin-top:-6px;">'+
+      '<div id="rc-detail-'+r.id+'" style="display:none;margin-bottom:10px;margin-top:-6px;">'+
         r.entries.map(function(e){
-          return '<div style="font-family:Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.7);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'+
-            '<div style="color:#FFD700;font-weight:bold;">🏆 '+e.tournament+'</div>'+
-            '<div style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:2px;">Revealed: '+e.date+'</div>'+
+          return '<div onclick="toggleRewardYearboard(\'rc-yb-'+r.id+'-'+e.date.replace(/[^0-9]/g,'')+'\','+JSON.stringify(name)+')" style="cursor:pointer;font-family:Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.7);padding:8px 14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px;">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;">'+
+              '<span style="color:#FFD700;font-weight:bold;">🏆 '+e.tournament+'</span>'+
+              '<span style="color:rgba(255,255,255,0.4);font-size:11px;">'+e.date+' &#x25BE;</span>'+
+            '</div>'+
             (e.extra?'<div style="color:#4fc3f7;font-size:11px;margin-top:3px;"><b>'+e.extra+'</b>'+(e.extraLabel?' — '+e.extraLabel:'')+' </div>':'')+
+            '<div id="rc-yb-'+r.id+'-'+e.date.replace(/[^0-9]/g,'')+'" style="display:none;margin-top:10px;"></div>'+
           '</div>';
         }).join('')+
       '</div>'+
     '</div>';
   });
   cab.innerHTML=html;
+}
+function toggleRewardYearboard(id,name){
+  var el=document.getElementById(id);
+  if(!el)return;
+  if(el.style.display==='none'||!el.innerHTML){
+    el.style.display='block';
+    renderMiniYearboard(el,name);
+  } else {
+    el.style.display='none';
+  }
+}
+function renderMiniYearboard(el,name){
+  // Mini leaderboard for this tournament (current matchHistory = this World Cup's data)
+  var s=sorted();
+  var stats=getPlayerStats(name);
+  var lbHtml='<div style="font-family:Arial,sans-serif;font-size:9px;letter-spacing:2px;color:#FFD700;margin-bottom:6px;">WORLD CUP 2026 — FINAL STANDINGS</div>'+
+    '<div style="display:flex;gap:10px;">'+
+    '<div style="flex:1;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;max-height:180px;overflow-y:auto;">';
+  s.forEach(function(p,i){
+    var isMe=p.name===name;
+    var color=i===0?'#FFD700':i===1?'#C0C0C0':i===2?'#CD7F32':'rgba(255,255,255,0.6)';
+    lbHtml+='<div style="display:flex;justify-content:space-between;padding:4px 6px;'+(isMe?'background:rgba(255,215,0,0.1);border-radius:5px;':'')+'font-family:Impact,sans-serif;font-size:12px;">'+
+      '<span style="color:'+(isMe?'#FFD700':'rgba(255,255,255,0.7)')+';">'+(i+1)+'. '+p.name+'</span>'+
+      '<span style="color:'+color+';">'+p.points+'</span>'+
+    '</div>';
+  });
+  lbHtml+='</div>'+
+    '<div style="flex:1;background:rgba(255,255,255,0.04);border-radius:8px;padding:10px;">'+
+      '<div style="font-family:Arial,sans-serif;font-size:9px;letter-spacing:1px;color:rgba(255,255,255,0.4);margin-bottom:6px;">'+name+"'S STATS — WORLD CUP 2026</div>"+
+      '<div style="font-family:Impact,sans-serif;font-size:20px;color:#FFD700;">'+(stats?stats.currentPts:'0')+' <span style="font-size:10px;font-family:Arial,sans-serif;color:rgba(255,255,255,0.4);">PTS</span></div>'+
+      '<div style="font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.6);margin-top:8px;line-height:1.8;">'+
+        'Avg/Game: <b style="color:#4fc3f7;">'+(stats?stats.avg:'--')+'</b><br>'+
+        '1st Place Finishes: <b style="color:#4fc3f7;">'+(stats?stats.wins:'0')+'</b><br>'+
+        'Podiums: <b style="color:#4fc3f7;">'+(stats?stats.podiums:'0')+'</b><br>'+
+        'Best Game: <b style="color:#4fc3f7;">'+(stats?stats.maxPts:'--')+' pts</b>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+  el.innerHTML=lbHtml;
 }
 function toggleRewardDetail(id){
   var el=document.getElementById(id);
