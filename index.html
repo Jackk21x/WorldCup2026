@@ -1114,6 +1114,7 @@ function getPlayerRewards(name){
       if(b.id==='streak'){detail.extra=d.streak!==undefined?d.streak+' games in a row':null;detail.extraLabel='Longest consecutive 1st place streak';}
       if(b.id==='consistent'){detail.extra=d.consistent!==undefined?d.consistent+' avg pts/game':null;detail.extraLabel='Highest average points per game';}
       if(b.id==='predictor'){detail.extra=(d.predictor&&d.predictor[name]!==undefined)?d.predictor[name]+' perfect games (6/6 pts)':null;detail.extraLabel='Times scoring maximum 6 points in a game';}
+      if(b.id==='worldcup'){detail.extra=trophyWinner?trophyWinner:null;detail.extraLabel='Correctly predicted winner';}
       won.push(detail);
     }
   });
@@ -2221,7 +2222,8 @@ function getAutoWinners(){
     if(podiumCount>bestPodiums)bestPodiums=podiumCount;
   });
   var podiumWinners=Object.keys(podiumCounts).filter(function(n){return podiumCounts[n]===bestPodiums;});
-  winners['podiums']=bestPodiums>=0?podiumWinners.join(' & ')+' ('+bestPodiums+' podiums)':'TBC';
+  winners['podiums']=bestPodiums>=0?podiumWinners.join(' & '):'TBC';
+  winners['_detail_podiumsCount']=bestPodiums;
 
   // Highest streak - longest consecutive 1st place run
   var bestStreak=0,bestStreakPlayer='';
@@ -2247,7 +2249,7 @@ function getAutoWinners(){
     });
     if(maxStreak===bestStreak)streakTies.push(p.name);
   });
-  winners['streak']=bestStreak>0?streakTies.join(' & ')+' ('+bestStreak+' games in a row)':'TBC';
+  winners['streak']=bestStreak>0?streakTies.join(' & '):'TBC';
 
   // Most consistent - highest avg pts per game
   var bestAvg = -1, bestAvgPlayer = '';
@@ -2383,13 +2385,17 @@ function renderAutoRewards(){
 
   AUTO_BADGES.forEach(function(b){
     var winner = winners[b.id];
+    var extraTxt='';
+    if(b.id==='podiums'&&winners['_detail_podiumsCount']!==undefined)extraTxt=' ('+winners['_detail_podiumsCount']+' podiums)';
+    if(b.id==='streak'&&winners['_detail']&&winners['_detail'].streak!==undefined)extraTxt=' ('+winners['_detail'].streak+' games in a row)';
+    if(b.id==='worldcup'&&trophyWinner)extraTxt=' — '+trophyWinner;
     html += '<div class="reward-card '+(revealed&&winner?'won':'pending')+'">';
     html += '<div class="reward-icon">'+b.icon+'</div>';
     html += '<div class="reward-info">';
     html += '<div class="reward-title">'+b.title+'</div>';
     html += '<div class="reward-desc">'+b.desc+'</div>';
     if(revealed && winner){
-      html += '<div class="reward-winner">&#x1F3C6; '+winner+'</div>';
+      html += '<div class="reward-winner">&#x1F3C6; '+winner+extraTxt+'</div>';
     } else {
       html += '<div class="reward-pending-lbl">Revealed 20th July</div>';
     }
